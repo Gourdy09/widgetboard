@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "show": true,
+  "title": "Widgetboard: Offline Wall Dashboard",
+  "description": "An open-source, offline-first wall dashboard for a Raspberry Pi Zero 2 W. One Go binary serves a live 20-tile grid (finances, markets, calendar, weather, to-dos, system health) to a kiosk display. Admin access is local-network only behind mutual TLS, secrets are encrypted at rest, and setup is a single script. Currently in the planning stage.",
+  "category": "Embedded & Web Software",
+  "tags": [
+    "Go",
+    "Raspberry Pi Zero 2 W",
+    "Embedded Linux",
+    "Wayland Kiosk",
+    "systemd",
+    "mDNS",
+    "mTLS",
+    "PKI",
+    "AES-256-GCM",
+    "Server-Sent Events",
+    "CSS Grid",
+    "Vanilla JS",
+    "Cross-Compilation",
+    "Open Source"
+  ],
+  "featured": false,
+  "content": {
+    "readme": true,
+    "sections": [
+      "2. Core Technologies & Concepts",
+      "3. Step-by-Step Development Roadmap"
+    ]
+  },
+  "resources": [
+    { "type": "repo", "title": "Source Code" }
+  ]
+}
