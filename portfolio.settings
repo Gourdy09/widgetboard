@@ -24,8 +24,11 @@
   "content": {
     "readme": true,
     "sections": [
-      "2. Core Technologies & Concepts",
-      "3. Step-by-Step Development Roadmap"
+      "Overview",
+      "Features",
+      "Architecture",
+      "Security Model",
+      "Roadmap"
     ]
   },
   "resources": [
