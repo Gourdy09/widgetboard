@@ -1,0 +1,11 @@
+services:
+  widgetboard:
+    build:
+      context: ../src
+      dockerfile: ../docker/Dockerfile
+    ports:
+      - "8080:8080"
+    deploy:
+      resources:
+        limits:
+          memory: 256M
