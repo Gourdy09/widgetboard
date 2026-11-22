@@ -1,52 +1,29 @@
-import { newCardConfig, createCard } from "./utils/cardFactory.js";
+import { LayoutStore } from "./core/layoutStore.js";
+import { Dashboard } from "./core/dashboard.js";
+import { startSync } from "./core/layoutSync.js";
+import { loadCardStyles } from "./cards/index.js";
 
-const grid = document.getElementById("dashboard-grid");
+async function main() {
+  const container = document.getElementById("dashboard-grid");
+  try {
+    loadCardStyles();
+    const store = await LayoutStore.create();
+    new Dashboard(container, store);
+    window.dashboard = store; // for console debugging
 
-const layoutConfig = [
-  // Row 1: Stocks, ETFs & Crypto
-  newCardConfig({
-    type: "ticker",
-    apiUrl: "/api/stock?symbol=AAPL&range=7d&interval=1h",
-    refreshMs: 15000,
-    col: 1,
-    row: 1,
-    params: { symbol: "AAPL" }
-  }),
-  newCardConfig({
-    type: "ticker",
-    apiUrl: "/api/stock?symbol=VOO&range=7d&interval=1h",
-    refreshMs: 15000,
-    col: 4,
-    row: 1,
-    params: { symbol: "VOO" }
-  }),
-  newCardConfig({
-    type: "ticker",
-    apiUrl: "/api/stock?symbol=NVDA&range=7d&interval=1h",
-    refreshMs: 15000,
-    col: 7,
-    row: 1,
-    params: { symbol: "NVDA" }
-  }),
-  newCardConfig({
-    type: "ticker",
-    apiUrl: "/api/stock?symbol=BTC-USD&range=7d&interval=1h",
-    refreshMs: 10000,
-    col: 10,
-    row: 1,
-    params: { symbol: "BTC-USD" }
-  }),
-  // Row 2: Second Crypto Card
-  newCardConfig({
-    type: "ticker",
-    apiUrl: "/api/stock?symbol=ETH-USD&range=7d&interval=1h",
-    refreshMs: 10000,
-    col: 1,
-    row: 3,
-    params: { symbol: "ETH-USD" }
-  })
-];
+    if (new URLSearchParams(location.search).has("preview")) {
+      // Embedded in the admin theme editor: render whatever the parent sends instead of the saved layout
+      window.addEventListener("message", (e) => {
+        if (e.origin === location.origin && e.data?.type === "wb-preview") store.load(e.data.doc);
+      });
+      parent.postMessage({ type: "wb-preview-ready" }, location.origin);
+    } else {
+      await startSync(store);
+    }
+  } catch (err) {
+    console.error(err);
+    container.textContent = "Could not load the dashboard.";
+  }
+}
 
-layoutConfig.forEach((cardData) => {
-  grid.append(createCard(cardData));
-});
+main();

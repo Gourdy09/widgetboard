@@ -1,0 +1,113 @@
+/*
+  Ticker layouts, chosen by the card's own size (not by its grid span), so it works at 1x1, 2x1, 1x2, 2x2 and beyond:
+
+    small      price + change
+    tall       + sparkline below   (card is at least 135px tall)
+    taller     + day range         (card is at least 215px tall)
+    wide/short sparkline beside the price (card is at least twice as wide as tall)
+*/
+.ticker-symbol {
+  font-size: 0.75em;
+  color: var(--wb-text-faint);
+  font-weight: 400;
+}
+
+.ticker-widget {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.35em;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+}
+
+.ticker-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.15em 0.6em;
+  min-width: 0;
+}
+
+.ticker-price {
+  font-size: 2.4em; /* fitText shrinks it when the number is too wide for the card */
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--wb-text);
+  white-space: nowrap;
+}
+
+.ticker-change {
+  font-size: 0.95em;
+  font-weight: 600;
+  padding: 0.1em 0.45em;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+.ticker-change.is-up {
+  color: var(--wb-positive);
+  background: var(--wb-positive-bg);
+}
+
+.ticker-change.is-down {
+  color: var(--wb-negative);
+  background: var(--wb-negative-bg);
+}
+
+.ticker-sparkline {
+  display: none;
+  width: 100%;
+  flex: 1 1 0;
+  min-height: 0;
+  max-height: 60cqw; /* never taller than 60% of the card's width, so narrow tall cards don't get a steep spike */
+}
+
+.ticker-sparkline polyline {
+  stroke: var(--wb-positive);
+  vector-effect: non-scaling-stroke; /* keeps the line crisp however much the svg is stretched */
+}
+.is-down-trend .ticker-sparkline polyline {
+  stroke: var(--wb-negative);
+}
+
+.ticker-range {
+  display: none;
+  font-size: 0.85em;
+  color: var(--wb-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@container card (min-height: 135px) {
+  .ticker-sparkline { display: block; }
+}
+
+@container card (min-height: 215px) {
+  .ticker-range { display: block; }
+}
+
+/* Wide and short: sparkline to the right of the price. */
+@container card (min-aspect-ratio: 2/1) and (min-width: 220px) {
+  .ticker-widget {
+    flex-direction: row;
+    align-items: center;
+    gap: 1em;
+  }
+  .ticker-header {
+    flex: 0 1 auto;
+    flex-direction: column;
+    align-items: flex-start;
+    max-width: 55%;
+  }
+  .ticker-sparkline {
+    display: block;
+    flex: 1 1 0;
+    height: 100%;
+    max-height: none;
+    min-width: 0;
+  }
+  .ticker-range { display: none; }
+}

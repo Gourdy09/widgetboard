@@ -32,3 +32,7 @@ go.work.sum
 # Editor/IDE
 # .idea/
 # .vscode/
+
+# Saved dashboard layout (runtime state)
+src/data/
+data/

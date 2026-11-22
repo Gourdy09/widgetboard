@@ -51,7 +51,28 @@ One toggle (and eventually a voice command) replaces every dollar figure on the 
 
 ### Live layout editor
 
-The wall layout lives in a `layout.json` file. Each tile has an `id`, `type`, `title`, `col_span`, `row_span`, and a `config` block, and tiles can span 1x1, 2x1, or 2x2 grid cells. A drag-and-drop editor at `/admin` (vanilla JavaScript, no frameworks) rearranges tiles, edits tickers and to-dos, and saves changes atomically. The wall updates immediately through Server-Sent Events, with no page reload.
+Open `http://<host>:8080/admin` and sign in (placeholder login: set `WIDGETBOARD_ADMIN_USER` / `WIDGETBOARD_ADMIN_PASS`, default `admin` / `admin`; real security comes later).
+
+- **Layout tab.** Drag widgets from the palette onto the preview grid (or click one to drop it in the first free spot). Drag a block to move it and drag its bottom-right corner to resize it. Arrow keys move the selected block, Shift+arrows resize it, Delete removes it. Each block shows its ID, type and size. Click a block to edit it in the panel under the grid: ID (read-only), type, title/subtitle/footer, the card's own options (for a ticker: a searchable ticker dropdown), visibility of each element (visible / hidden but keeps its space / removed), position and size.
+- **Grid size.** Columns and rows are set at the top of the Layout tab. The grid always fills the screen exactly, so nothing scrolls. Making the grid smaller moves and then shrinks cards to fit, and asks before removing any.
+- **Theme tab.** Presets (Dark, Light, Midnight, Solarized, High contrast) plus every colour, spacing, corner radius, border, font, text size and shadow, with a live preview of the real dashboard.
+- **Saving.** Nothing reaches the wall until you press *Save changes*; the wall picks it up within a few seconds. Unsaved edits are kept in the browser, so a reload or crash doesn't lose them, and the wall keeps a local copy of the last layout it loaded in case the server is unreachable at boot. The saved layout lives in `data/dashboard.json` (the `-data` flag or `WIDGETBOARD_DATA`; a Docker volume in `docker-compose.yml`) and is written atomically.
+
+**How cards work.** Every card is built from the base card in `src/static/json/layout.json` (`id`, `type`, `title`, `subtitle`, `footer`, `apiUrl`, `refreshMs`, `col`, `row`, `col_span`, `row_span`, `params`, `config`), then the card type's defaults, then the card's own values. The whole dashboard is one document, `{ version, grid, theme, cards }`, served by `GET /api/layout` and saved by `PUT /api/layout` (sign-in required).
+
+**Every size works.** A card is a CSS size container, so it adapts to the space it actually gets (1x1, 2x1, 1x2, 2x2, ...) instead of using hardcoded layouts per size: lower-priority parts drop out when there is no room, charts move beside the numbers on wide cards, and numbers shrink to fit (`utils/fitText.js`). Nothing overflows or scrolls. The layout engine (`core/layoutEngine.js`) guarantees no overlaps, nothing outside the grid and unique ids, no matter what is in the file.
+
+**Adding a card type:**
+
+```sh
+cd src
+go run ./cmd/newcard weather                 # type "weather"
+go run ./cmd/newcard rss-feed "News Feed"    # type "rss-feed", label "News Feed"
+```
+
+This creates `static/js/cards/<name>Card.js` (size limits, defaults, editor fields, `render()`), `static/css/cards/<type>.css`, and registers the card in `cards/index.js`. Restart the server and the widget is in the admin palette. Fill in `meta` and `render()` and you're done.
+
+**Tests:** `node --test src/test/*.test.mjs`
 
 ## Architecture
 

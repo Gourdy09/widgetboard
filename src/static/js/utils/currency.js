@@ -27,10 +27,20 @@ const REGION_TO_CURRENCY = {
   FI: "EUR",
 };
 
+// navigator.language can be a tag the Intl APIs reject (e.g. "en-US@posix" on some Linux setups).
+// Returns a locale that is safe to pass to toLocaleString(), or undefined for the runtime default.
+export function safeLocale() {
+  try {
+    return Intl.NumberFormat.supportedLocalesOf(navigator.language)[0];
+  } catch {
+    return undefined;
+  }
+}
+
 export function getLocalCurrency() {
   try {
     // Extract region from browser locale (e.g., "en-CA" -> "CA")
-    const locale = new Intl.Locale(navigator.language);
+    const locale = new Intl.Locale(safeLocale() ?? "en-US");
     if (locale.region && REGION_TO_CURRENCY[locale.region]) {
       return REGION_TO_CURRENCY[locale.region];
     }

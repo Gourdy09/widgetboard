@@ -14,5 +14,7 @@ COPY --from=builder /app/widgetboard /widgetboard
 
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
+ENV WIDGETBOARD_DATA=/data
+VOLUME /data
 EXPOSE 8080
 ENTRYPOINT ["/widgetboard"]

@@ -1,17 +1,92 @@
 <!DOCTYPE html>
 <html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Widgetboard &middot; Admin</title>
+    <link rel="stylesheet" href="static/css/admin.css" />
+  </head>
+  <body>
+    <!-- Sign in -->
+    <div id="login" class="login-wrap" hidden>
+      <svg class="logo" viewBox="0 0 16 16" width="48" height="48" fill="currentColor" aria-hidden="true">
+        <path d="M1.75 1h5.5c.966 0 1.75.784 1.75 1.75v3.5A1.75 1.75 0 0 1 7.25 8h-5.5A1.75 1.75 0 0 1 0 6.25v-3.5C0 1.784.784 1 1.75 1ZM1.5 2.75v3.5c0 .138.112.25.25.25h5.5a.25.25 0 0 0 .25-.25v-3.5a.25.25 0 0 0-.25-.25h-5.5a.25.25 0 0 0-.25.25ZM9.75 9h4.5c.966 0 1.75.784 1.75 1.75v2.5A1.75 1.75 0 0 1 14.25 15h-4.5A1.75 1.75 0 0 1 8 13.25v-2.5C8 9.784 8.784 9 9.75 9Zm-.25 1.75v2.5c0 .138.112.25.25.25h4.5a.25.25 0 0 0 .25-.25v-2.5a.25.25 0 0 0-.25-.25h-4.5a.25.25 0 0 0-.25.25ZM9 1.75C9 .784 9.784 0 10.75 0h3.5C15.216 0 16 .784 16 1.75v3.5A1.75 1.75 0 0 1 14.25 7h-3.5A1.75 1.75 0 0 1 9 5.25Zm1.75-.25a.25.25 0 0 0-.25.25v3.5c0 .138.112.25.25.25h3.5a.25.25 0 0 0 .25-.25v-3.5a.25.25 0 0 0-.25-.25Z"/>
+      </svg>
+      <h1>Sign in to Widgetboard</h1>
+      <form id="login-form" class="Box login-box">
+        <div id="login-error" class="flash flash-error" role="alert" hidden></div>
+        <div class="form-group">
+          <label class="form-label" for="username">Username</label>
+          <input id="username" class="form-control" autocomplete="username" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="password">Password</label>
+          <input id="password" class="form-control" type="password" autocomplete="current-password" required />
+        </div>
+        <button class="btn btn-primary btn-block" type="submit">Sign in</button>
+      </form>
+    </div>
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Widgetboard</title>
-    <link rel="stylesheet" href="static/css/admin.css"/>
-    <script src="static/js/admin.js" defer></script>
-</head>
+    <!-- Editor -->
+    <div id="app" hidden>
+      <header class="Header">
+        <svg viewBox="0 0 16 16" width="28" height="28" fill="currentColor" aria-hidden="true">
+          <path d="M1.75 1h5.5c.966 0 1.75.784 1.75 1.75v3.5A1.75 1.75 0 0 1 7.25 8h-5.5A1.75 1.75 0 0 1 0 6.25v-3.5C0 1.784.784 1 1.75 1ZM9.75 9h4.5c.966 0 1.75.784 1.75 1.75v2.5A1.75 1.75 0 0 1 14.25 15h-4.5A1.75 1.75 0 0 1 8 13.25v-2.5C8 9.784 8.784 9 9.75 9ZM9 1.75C9 .784 9.784 0 10.75 0h3.5C15.216 0 16 .784 16 1.75v3.5A1.75 1.75 0 0 1 14.25 7h-3.5A1.75 1.75 0 0 1 9 5.25Z"/>
+        </svg>
+        <strong class="Header-title">Widgetboard</strong>
+        <span class="Header-sub">Admin</span>
+        <span class="spacer"></span>
+        <span id="save-status" class="save-status"></span>
+        <button id="save" class="btn btn-primary" type="button" disabled>Save changes</button>
+        <span class="user"><span id="user"></span> &middot; <button id="logout" class="link-button" type="button">Sign out</button></span>
+      </header>
 
-<body>
-    <h1>Admin</h1>
-    <p>{{.Message}}</p>
-</body>
+      <nav class="UnderlineNav" aria-label="Sections">
+        <button class="tab selected" data-tab="layout" type="button">Layout</button>
+        <button class="tab" data-tab="theme" type="button">Theme</button>
+        <span class="note nav-note"><span id="type-count">0</span> widget types installed</span>
+      </nav>
 
+      <div id="banner" class="flash flash-warn banner" hidden>
+        Restored unsaved changes from your last visit.
+        <button id="discard" class="btn btn-sm" type="button">Discard and reload saved layout</button>
+      </div>
+
+      <main class="container">
+        <section id="tab-layout">
+          <div class="layout">
+            <aside class="Box palette">
+              <div class="Box-header"><strong>Widgets</strong></div>
+              <div class="Box-body" id="palette-list"></div>
+              <div class="Box-footer note">Drag onto the grid, or click to add.</div>
+            </aside>
+
+            <div class="stage">
+              <div class="Box toolbar">
+                <div class="toolbar-field">
+                  <label class="form-label" for="grid-cols">Columns</label>
+                  <input id="grid-cols" class="form-control narrow" type="number" min="1" max="24" />
+                </div>
+                <div class="toolbar-field">
+                  <label class="form-label" for="grid-rows">Rows</label>
+                  <input id="grid-rows" class="form-control narrow" type="number" min="1" max="24" />
+                </div>
+                <span id="cell-info" class="note"></span>
+              </div>
+              <div id="grid-editor"></div>
+              <div id="inspector" class="Box"></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="tab-theme" hidden>
+          <div id="theme-panel"></div>
+        </section>
+      </main>
+    </div>
+
+    <div id="toasts" aria-live="polite"></div>
+    <script type="module" src="static/js/admin/app.js"></script>
+  </body>
 </html>

@@ -5,7 +5,17 @@ services:
       dockerfile: ../docker/Dockerfile
     ports:
       - "8080:8080"
+    environment:
+      # Placeholder admin login until real security is added. Change these!
+      WIDGETBOARD_ADMIN_USER: ${WIDGETBOARD_ADMIN_USER:-admin}
+      WIDGETBOARD_ADMIN_PASS: ${WIDGETBOARD_ADMIN_PASS:-admin}
+    volumes:
+      # The saved layout and theme live here and survive restarts and rebuilds.
+      - widgetboard-data:/data
     deploy:
       resources:
         limits:
           memory: 256M
+
+volumes:
+  widgetboard-data:

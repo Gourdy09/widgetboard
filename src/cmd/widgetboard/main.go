@@ -1,101 +1,70 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"html/template"
 	"net/http"
-	"io"
+	"os"
 
 	"widgetboard/static"
 	"widgetboard/web"
 )
 
-type DashboardData struct {
+type PageData struct {
 	Message string
 }
 
-type AdminData struct {
-	Message string
-}
-
-func NewDashboardData(message string) *DashboardData {
-	return &DashboardData{
-		Message: message,
+func envOr(key, fallback string) string {
+	if v := os.Getenv(key); v != "" {
+		return v
 	}
-}
-
-func NewAdminData(message string) *AdminData {
-	return &AdminData{
-		Message: message,
-	}
+	return fallback
 }
 
 func main() {
-	dd := NewDashboardData("poopy")
-	ad := NewAdminData("admin")
+	dataDir := flag.String("data", envOr("WIDGETBOARD_DATA", "data"), "directory where the saved layout lives")
+	addr := flag.String("addr", envOr("WIDGETBOARD_ADDR", ":8080"), "address to listen on")
+	adminUser := flag.String("admin-user", envOr("WIDGETBOARD_ADMIN_USER", "admin"), "admin username")
+	adminPass := flag.String("admin-pass", envOr("WIDGETBOARD_ADMIN_PASS", "admin"), "admin password")
+	flag.Parse()
+
+	if *adminUser == "admin" && *adminPass == "admin" {
+		fmt.Println("WARNING: using the default admin login (admin / admin). Set WIDGETBOARD_ADMIN_USER and WIDGETBOARD_ADMIN_PASS.")
+	}
 
 	// Parse both admin.html and dashboard.html from web/
 	t, err := template.ParseFS(web.Templates, "*.html")
 	if err != nil {
 		panic(err)
 	}
+	render := func(name string) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			if err := t.ExecuteTemplate(w, name, PageData{}); err != nil {
+				fmt.Println(err)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
+		}
+	}
 
-	// Serve dashboard.css at /static/dashboard.css
+	a := newAuth(*adminUser, *adminPass)
+	layout := newLayoutStore(*dataDir)
+
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(static.Files))))
+	http.HandleFunc("/", render("dashboard.html"))
+	http.HandleFunc("/admin", render("admin.html"))
 
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		err = t.ExecuteTemplate(w, "dashboard.html", dd)
-		if err != nil {
-			fmt.Println(err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-	})
+	http.HandleFunc("/api/login", a.loginHandler)
+	http.HandleFunc("/api/logout", a.logoutHandler)
+	http.HandleFunc("/api/session", a.sessionHandler)
 
-	http.HandleFunc("/admin", func(w http.ResponseWriter, r *http.Request) {
-		err = t.ExecuteTemplate(w, "admin.html", ad)
-		if err != nil {
-			fmt.Println(err)
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-	})
+	http.HandleFunc("/api/layout", layout.handler(a))
+	http.HandleFunc("/api/stock", stockHandler)
+	http.HandleFunc("/api/symbols", a.require(symbolsHandler))
 
-	http.HandleFunc("/api/stock", func(w http.ResponseWriter, r *http.Request) {
-		symbol := r.URL.Query().Get("symbol")
-		if symbol == "" {
-			symbol = "AAPL"
-		}
-		rangeVal := r.URL.Query().Get("range")
-		if rangeVal == "" {
-			rangeVal = "7d"
-		}
-		interval := r.URL.Query().Get("interval")
-		if interval == "" {
-			interval = "1h"
-		}
-
-		yahooURL := fmt.Sprintf("https://query1.finance.yahoo.com/v8/finance/chart/%s?range=%s&interval=%s", symbol, rangeVal, interval)
-		req, err := http.NewRequest("GET", yahooURL, nil)
-		if err != nil {
-		    http.Error(w, err.Error(), http.StatusInternalServerError)
-		    return
-		}
-		req.Header.Set("User-Agent", "Mozilla/5.0")
-
-		resp, err := http.DefaultClient.Do(req)
-		if err != nil {
-			fmt.Println("Yahoo fetch error:", err)
-			http.Error(w, err.Error(), http.StatusBadGateway)
-			return
-		}
-		defer resp.Body.Close()
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(resp.StatusCode)
-		io.Copy(w, resp.Body)
-	})
-
-	fmt.Println("Listening on :8080...")
-	http.ListenAndServe(":8080", nil)
+	fmt.Printf("Listening on %s (layout stored in %s)\n", *addr, *dataDir)
+	if err := http.ListenAndServe(*addr, nil); err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 }

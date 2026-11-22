@@ -1,68 +1,67 @@
 import { getCardRenderer } from "../cards/index.js";
+import { SECTIONS } from "../core/layoutEngine.js";
 
-const response = await fetch("/static/json/layout.json");
-const cardTemplate = await response.json();
+const TAGS = { title: "h2", subtitle: "h3", main: "div", footer: "p" };
 
-let nextCardId = 0;
-
-export function newCardConfig(overrides = {}) {
-  const base = structuredClone(cardTemplate);
-  return {
-    ...base,
-    ...overrides,
-    params: { ...base.params, ...(overrides.params || {}) },
-    config: { ...base.config, ...(overrides.config || {}) }
-  };
+export async function loadCardTemplate(url = "/static/json/layout.json") {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Could not load card template (${res.status})`);
+  return res.json();
 }
 
-export function makeCard(cardData) {
-  const card = document.createElement("div");
-
-  const id = nextCardId++;
-  card.id = `card-${id}`;
-  card.dataset.cardId = id;
-
-  card.classList.add("grid-item");
-  card.style.gridRow = `${cardData.row} / span ${cardData.row_span}`;
-  card.style.gridColumn = `${cardData.col} / span ${cardData.col_span}`;
-  return card;
+// Position and size are CSS variables so the stylesheet decides how to use them.
+export function applyPlacement(el, card) {
+  el.style.setProperty("--col", card.col);
+  el.style.setProperty("--row", card.row);
+  el.style.setProperty("--col-span", card.col_span);
+  el.style.setProperty("--row-span", card.row_span);
 }
 
-export function populateCard(card, cardData) {
-  // Matches "config" in cardTemplate.json
-  const config = cardData.config || {};
+// Anything that changes what is drawn inside the card. Moving/resizing is not part of it,
+// so dragging a card never re-renders it or re-fetches its data.
+export function contentKey(card) {
+  const { col, row, col_span, row_span, ...content } = card;
+  return JSON.stringify(content);
+}
 
-  const sections = [
-    { key: "title", tag: "h2" },
-    { key: "subtitle", tag: "h3" },
-    { key: "main", tag: "div" },
-    { key: "footer", tag: "p" },
-  ];
+// Visibility per section, from card.config.<section>_visibility:
+//   visible   - shown
+//   hidden    - invisible but keeps its space (keeps the layout stable)
+//   collapsed - not created at all, the rest of the card uses the space
+export function createCard(card) {
+  const el = document.createElement("div");
+  el.id = `card-${card.id}`;
+  el.dataset.cardId = card.id;
+  el.dataset.cardType = card.type;
+  el.classList.add("grid-item");
+  applyPlacement(el, card);
 
   const slots = {};
+  for (const key of SECTIONS) {
+    const state = card.config[`${key}_visibility`];
+    if (state === "collapsed") continue;
+    const slot = document.createElement(TAGS[key]);
+    slot.classList.add(`card-${key}`);
+    if (state === "hidden") slot.style.visibility = "hidden";
+    slots[key] = slot;
+    el.append(slot);
+  }
 
-  sections.forEach(({ key, tag }) => {
-    const state = config[`${key}_visibility`] || "visible";
-    if (state === "collapsed") return;
+  // A card whose renderer throws must not take the rest of the dashboard down with it.
+  let cleanup;
+  try {
+    cleanup = getCardRenderer(card.type)(slots, card);
+  } catch (err) {
+    console.error(`Card ${card.id} (${card.type}) failed to render`, err);
+    const target = slots.main ?? el;
+    target.textContent = "This card failed to load.";
+  }
 
-    const el = document.createElement(tag);
-    el.classList.add(`card-${key}`);
-
-    if (state === "hidden") {
-      el.style.visibility = "hidden";
-    }
-
-    slots[key] = el;
-    card.append(el);
-  });
-
-  card.dataset.cardType = cardData.type || "default";
-  const render = getCardRenderer(cardData.type);
-  return render(slots, cardData);
-}
-
-export function createCard(cardData) {
-  const card = makeCard(cardData);
-  populateCard(card, cardData);
-  return card;
+  return {
+    el,
+    destroy() {
+      if (typeof cleanup === "function") cleanup();
+      el.remove();
+    },
+  };
 }
