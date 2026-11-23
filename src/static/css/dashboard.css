@@ -1,3 +1,4 @@
+@import url("/static/css/design-system.css");
 /*
   Everything visual comes from --wb-* variables, which the theme (admin > Theme) sets from dashboard.json.
   The defaults below only matter for the first paint, before the layout has loaded.

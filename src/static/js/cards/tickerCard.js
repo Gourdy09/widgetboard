@@ -1,205 +1,403 @@
-import { getLocalCurrency, getExchangeRate, safeLocale } from "../utils/currency.js";
+
+import {
+  getLocalCurrency,
+  getExchangeRate,
+  safeLocale,
+} from "../utils/currency.js";
 import { fitText } from "../utils/fitText.js";
+import { renderChart } from "../utils/chartRenderer.js";
+
 export const type = "ticker";
 export const css = "/static/css/cards/ticker.css";
 
 const POPULAR = [
-  ["AAPL", "Apple"], ["MSFT", "Microsoft"], ["GOOGL", "Alphabet"], ["AMZN", "Amazon"],
-  ["NVDA", "NVIDIA"], ["META", "Meta Platforms"], ["TSLA", "Tesla"], ["BRK-B", "Berkshire Hathaway"],
-  ["JPM", "JPMorgan Chase"], ["V", "Visa"], ["WMT", "Walmart"], ["XOM", "Exxon Mobil"],
-  ["SPY", "SPDR S&P 500 ETF"], ["VOO", "Vanguard S&P 500 ETF"], ["QQQ", "Invesco QQQ"], ["VTI", "Vanguard Total Market"],
-  ["DIA", "SPDR Dow Jones ETF"], ["IWM", "iShares Russell 2000"],
-  ["BTC-USD", "Bitcoin"], ["ETH-USD", "Ethereum"], ["SOL-USD", "Solana"], ["XRP-USD", "XRP"], ["DOGE-USD", "Dogecoin"],
-  ["^GSPC", "S&P 500 index"], ["^DJI", "Dow Jones index"], ["^IXIC", "Nasdaq Composite"],
-  ["GC=F", "Gold futures"], ["CL=F", "Crude oil futures"], ["EURUSD=X", "EUR / USD"],
-].map(([value, name]) => ({ value, label: `${value} \u2014 ${name}` }));
+  ["AAPL", "Apple"],
+  ["MSFT", "Microsoft"],
+  ["GOOGL", "Alphabet"],
+  ["AMZN", "Amazon"],
+  ["NVDA", "NVIDIA"],
+  ["META", "Meta Platforms"],
+  ["TSLA", "Tesla"],
+  ["BRK-B", "Berkshire Hathaway"],
+  ["JPM", "JPMorgan Chase"],
+  ["V", "Visa"],
+  ["WMT", "Walmart"],
+  ["XOM", "Exxon Mobil"],
+  ["SPY", "SPDR S&P 500 ETF"],
+  ["VOO", "Vanguard S&P 500 ETF"],
+  ["QQQ", "Invesco QQQ"],
+  ["VTI", "Vanguard Total Market"],
+  ["DIA", "SPDR Dow Jones ETF"],
+  ["IWM", "iShares Russell 2000"],
+  ["BTC-USD", "Bitcoin"],
+  ["ETH-USD", "Ethereum"],
+  ["SOL-USD", "Solana"],
+  ["XRP-USD", "XRP"],
+  ["DOGE-USD", "Dogecoin"],
+  ["^GSPC", "S&P 500 index"],
+  ["^DJI", "Dow Jones index"],
+  ["^IXIC", "Nasdaq Composite"],
+  ["GC=F", "Gold futures"],
+  ["CL=F", "Crude oil futures"],
+  ["EURUSD=X", "EUR / USD"],
+].map(([value, name]) => ({
+  value,
+  label: `${value} — ${name}`,
+}));
 
-// Everything the layout engine and the editor need to know about this card type.
+const CHART_TYPES = [
+  { value: "sparkline", label: "Sparkline" },
+  { value: "area", label: "Area" },
+  { value: "candlestick", label: "Candlestick" },
+  { value: "ohlc", label: "OHLC bars" },
+  { value: "bar", label: "Price bars" },
+];
+
+const DEFAULTS = {
+  symbol: "AAPL",
+  range: "7d",
+  interval: "1h",
+  chartType: "sparkline",
+};
+
 export const meta = {
   label: "Stock / Crypto Ticker",
-  description: "Live price, daily change and a sparkline for any symbol.",
+  description: "Displays live market prices and configurable price charts.",
+
   size: {
-    default: { col_span: 3, row_span: 2 },
-    min: { col_span: 1, row_span: 1 }, // the card adapts to every size, see css/cards/ticker.css
+    default: { col_span: 2, row_span: 2 },
+    min: { col_span: 1, row_span: 1 },
   },
-  minRefreshMs: 5000, // don't hammer the upstream API
+
+  minRefreshMs: 5000,
+
   defaults: {
+    title: "Stock / Crypto Ticker",
     refreshMs: 15000,
-    params: { symbol: "AAPL", range: "7d", interval: "1h" },
+    params: { ...DEFAULTS },
   },
-  // Describes `params` so the editor can build a form without knowing about tickers.
+
   params: {
     symbol: {
       type: "combobox",
       label: "Ticker",
       options: POPULAR,
-      searchUrl: "/api/symbols?q={q}", // live search through the server
+      searchUrl: "/api/symbols?q={q}",
       allowCustom: true,
       uppercase: true,
       required: true,
     },
-    range: { type: "select", label: "Range", options: ["1d", "5d", "7d", "1mo", "3mo", "6mo", "1y"] },
-    interval: { type: "select", label: "Interval", options: ["5m", "15m", "30m", "1h", "1d"] },
+
+    range: {
+      type: "select",
+      label: "Range",
+      options: ["1d", "5d", "7d", "1mo", "3mo", "6mo", "1y"],
+    },
+
+    interval: {
+      type: "select",
+      label: "Interval",
+      options: ["5m", "15m", "30m", "1h", "1d"],
+    },
+
+    chartType: {
+      type: "select",
+      label: "Chart style",
+      options: CHART_TYPES,
+    },
   },
-  summary: (card) => card.params?.symbol ?? "",
+
+  summary: (card) => card.params?.symbol ?? DEFAULTS.symbol,
 };
 
+// --------------------------------------------------
+// Helpers
+// --------------------------------------------------
+
+function getChartType(value) {
+  return CHART_TYPES.some((option) => option.value === value)
+    ? value
+    : DEFAULTS.chartType;
+}
+
+function formatMoney(value, currency) {
+  return value.toLocaleString(safeLocale(), {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 2,
+  });
+}
+
+function getFiniteValues(values) {
+  return values.filter(Number.isFinite);
+}
+
+function getChartData(quote, rate) {
+  const opens = quote.open || [];
+  const highs = quote.high || [];
+  const lows = quote.low || [];
+  const closes = quote.close || [];
+
+  // Preserve original indices so OHLC values stay aligned.
+  return closes.map((close, index) => ({
+    open: Number.isFinite(opens[index])
+      ? opens[index] * rate
+      : NaN,
+
+    high: Number.isFinite(highs[index])
+      ? highs[index] * rate
+      : NaN,
+
+    low: Number.isFinite(lows[index])
+      ? lows[index] * rate
+      : NaN,
+
+    close: Number.isFinite(close)
+      ? close * rate
+      : NaN,
+  }));
+}
+
+function getPriceRange(market, closes, rate) {
+  const valid = getFiniteValues(closes);
+
+  const min = valid.length
+    ? valid.reduce((a, b) => Math.min(a, b))
+    : 0;
+
+  const max = valid.length
+    ? valid.reduce((a, b) => Math.max(a, b))
+    : 0;
+
+  return {
+    low: (market.regularMarketDayLow ?? min) * rate,
+    high: (market.regularMarketDayHigh ?? max) * rate,
+  };
+}
+
+// --------------------------------------------------
+// Card rendering
+// --------------------------------------------------
+
 export function render(slots, cardData) {
-  // Extract parameters from cardData.params as passed by newCardConfig
-  const params = cardData.params || {};
-  const symbol = params.symbol || "SP500-USD";
-  const range = params.range || "7d";
-  const interval = params.interval || "1h";
+  const params = {
+    ...DEFAULTS,
+    ...(cardData.params || {}),
+  };
 
-  const url =
-    cardData.apiUrl ||
-    `/api/stock?symbol=${encodeURIComponent(symbol)}&range=${encodeURIComponent(range)}&interval=${encodeURIComponent(interval)}`;
+  const symbol = params.symbol;
+  const range = params.range;
+  const interval = params.interval;
+  const chartType = getChartType(params.chartType);
 
-  // Visibility (visible / hidden / collapsed) is handled centrally by the card factory,
-  // so slots only exist when they should be shown.
+  // Standard template slots.
   if (slots.title) {
-    // "Apple (AAPL)" when the card has its own title, just "AAPL" when it doesn't.
-    if (cardData.title && cardData.title.toUpperCase() !== symbol.toUpperCase()) {
-      slots.title.textContent = `${cardData.title} `;
-      const tag = document.createElement("span");
-      tag.className = "ticker-symbol";
-      tag.textContent = `(${symbol})`;
-      slots.title.append(tag);
-    } else {
-      slots.title.textContent = symbol;
-    }
+    slots.title.textContent = cardData.title ?? meta.label;
   }
 
-  if (slots.subtitle) slots.subtitle.textContent = "Loading...";
+  if (slots.subtitle) {
+    slots.subtitle.textContent = cardData.subtitle ?? "Loading...";
+  }
 
+  if (slots.footer) {
+    slots.footer.textContent = cardData.footer ?? "";
+  }
+
+  // Main content.
   const wrapper = document.createElement("div");
   wrapper.className = "ticker-widget";
-  wrapper.innerHTML = `
-    <div class="ticker-header">
-      <span class="ticker-price">--</span>
-      <span class="ticker-change">--</span>
-    </div>
-    <svg class="ticker-sparkline" viewBox="0 0 200 60" preserveAspectRatio="none"></svg>
-    <div class="ticker-range"></div>
-  `;
-  if (slots.main) slots.main.append(wrapper);
 
-  const priceEl = wrapper.querySelector(".ticker-price");
-  const changeEl = wrapper.querySelector(".ticker-change");
-  const svgEl = wrapper.querySelector(".ticker-sparkline");
-  const rangeEl = wrapper.querySelector(".ticker-range");
+  const header = document.createElement("div");
+  header.className = "ticker-header";
 
-  const fit = fitText(priceEl, { container: wrapper.querySelector(".ticker-header") });
+  const priceEl = document.createElement("div");
+  priceEl.className = "ticker-price";
+  priceEl.textContent = "--";
+
+  const changeEl = document.createElement("div");
+  changeEl.className = "ticker-change";
+  changeEl.textContent = "--";
+
+  header.append(priceEl, changeEl);
+
+  const chartEl = document.createElementNS(
+    "http://www.w3.org/2000/svg",
+    "svg"
+  );
+
+  chartEl.classList.add("ticker-sparkline");
+  chartEl.setAttribute("role", "img");
+  chartEl.setAttribute("aria-label", `${symbol} price chart`);
+
+  const rangeEl = document.createElement("div");
+  rangeEl.className = "ticker-range";
+
+  wrapper.append(header, chartEl, rangeEl);
+
+  slots.main?.append(wrapper);
+
+  // fitText is optional, as main may not exist.
+  const fit = slots.main
+    ? fitText(priceEl, { container: header })
+    : null;
+
+  // --------------------------------------------------
+  // Data fetching
+  // --------------------------------------------------
+
+  const url = cardData.apiUrl ||
+    `/api/stock?symbol=${encodeURIComponent(symbol)}` +
+    `&range=${encodeURIComponent(range)}` +
+    `&interval=${encodeURIComponent(interval)}`;
 
   let controller = new AbortController();
 
-  async function updateTicker() {
+  async function update() {
+    // Cancel an older request before starting another.
     controller.abort();
     controller = new AbortController();
 
     try {
-      const res = await fetch(url, { signal: controller.signal });
-      if (!res.ok) throw new Error(`Quote request failed (${res.status})`);
-      const json = await res.json();
+      const response = await fetch(url, {
+        signal: controller.signal,
+      });
 
+      if (!response.ok) {
+        throw new Error(`Quote request failed (${response.status})`);
+      }
+
+      const json = await response.json();
       const result = json?.chart?.result?.[0];
-      if (!result) throw new Error("Invalid chart payload");
 
-      const meta = result.meta;
-      const closes = (result.indicators?.quote?.[0]?.close || []).filter(
-        (n) => n != null,
+      if (!result) {
+        throw new Error("Invalid chart payload");
+      }
+
+      const market = result.meta || {};
+      const quote = result.indicators?.quote?.[0] || {};
+
+      // Currency conversion.
+      const sourceCurrency = market.currency || "USD";
+      const targetCurrency = cardData.currency || getLocalCurrency();
+
+      const rate = await getExchangeRate(
+        sourceCurrency,
+        targetCurrency
       );
 
-      // 1. Detect machine's currency (or allow cardData currency to override it)
-      const sourceCurrency = meta.currency || "USD";
-      const targetCurrency = cardData.currency || getLocalCurrency();
-      const rate = await getExchangeRate(sourceCurrency, targetCurrency);
+      if (controller.signal.aborted) return;
 
-      // 2. Convert prices with robust fallbacks
-      const fallbackPrice = closes[closes.length - 1] || 0;
-      const price = (meta.regularMarketPrice ?? fallbackPrice) * rate;
-      const prevClose =
-        (meta.chartPreviousClose ||
-          meta.previousClose ||
-          meta.regularMarketPrice ||
-          fallbackPrice) * rate;
+      // Price calculations.
+      const closes = quote.close || [];
+      const validCloses = getFiniteValues(closes);
 
-      const dayLow = (meta.regularMarketDayLow ?? Math.min(...closes, fallbackPrice)) * rate;
-      const dayHigh = (meta.regularMarketDayHigh ?? Math.max(...closes, fallbackPrice)) * rate;
+      const fallbackPrice = validCloses.at(-1) ?? 0;
 
-      const pct =
-        meta.regularMarketChangePercent ??
-        (prevClose ? ((price - prevClose) / prevClose) * 100 : 0);
+      const rawPrice = market.regularMarketPrice ?? fallbackPrice;
+
+      const price = rawPrice * rate;
+
+      const previousRaw =
+        market.chartPreviousClose ??
+        market.previousClose ??
+        market.regularMarketPrice ??
+        fallbackPrice;
+
+      const previousClose = previousRaw * rate;
+
+      const pct = Number.isFinite(market.regularMarketChangePercent)
+        ? market.regularMarketChangePercent
+        : previousClose
+          ? ((price - previousClose) / previousClose) * 100
+          : 0;
+
       const isUp = pct >= 0;
 
-      // 3. Format using the browser's locale & target currency symbol
-      const formatMoney = (val) =>
-        val.toLocaleString(safeLocale(), {
-          style: "currency",
-          currency: targetCurrency,
-        });
+      // Update price.
+      priceEl.textContent = formatMoney(price, targetCurrency);
+      fit?.update();
 
-      priceEl.textContent = formatMoney(price);
-      fit.update();
-      changeEl.textContent = `${isUp ? "+" : ""}${pct.toFixed(2)}%`;
-      changeEl.className = `ticker-change ${isUp ? "is-up" : "is-down"}`;
+      // Update percentage.
+      changeEl.textContent =
+        `${isUp ? "+" : ""}${pct.toFixed(2)}%`;
+
+      changeEl.className =
+        `ticker-change ${isUp ? "is-up" : "is-down"}`;
+
       wrapper.classList.toggle("is-down-trend", !isUp);
 
-      rangeEl.textContent = `Day: ${formatMoney(dayLow)} - ${formatMoney(dayHigh)}`;
+      // Update daily range.
+      const { low, high } = getPriceRange(
+        market,
+        validCloses,
+        rate
+      );
 
-      // Update Subtitle to show Up / Down status
+      rangeEl.textContent =
+        `Day: ${formatMoney(low, targetCurrency)} - ` +
+        `${formatMoney(high, targetCurrency)}`;
+
+      // Update standard subtitle slot.
       if (slots.subtitle) {
-        const sign = isUp ? "+" : "";
-        slots.subtitle.textContent = `${isUp ? "Up" : "Down"} (${sign}${pct.toFixed(2)}%)`;
+        slots.subtitle.textContent =
+          `${isUp ? "Up" : "Down"} ` +
+          `(${isUp ? "+" : ""}${pct.toFixed(2)}%)`;
       }
 
-      // 4. Draw SVG Sparkline from hourly close array
-      drawSparkline(svgEl, closes, isUp);
+      // Render selected chart.
+      if (slots.main) {
+        const chartData = getChartData(quote, rate);
 
-      // 5. Update Footer with last market timestamp
-      if (slots.footer && meta.regularMarketTime) {
-        const marketDate = new Date(meta.regularMarketTime * 1000);
-        slots.footer.textContent = `Last trade: ${marketDate.toLocaleTimeString(safeLocale())}`;
+        renderChart(chartEl, {
+          type: chartType,
+          data: chartData,
+        });
       }
-    } catch (err) {
-      if (err.name !== "AbortError") {
-        console.error(`Ticker ${symbol}:`, err);
-        priceEl.textContent = "Error";
-        changeEl.textContent = "Failed to fetch";
-        if (slots.subtitle) {
-          slots.subtitle.textContent = "Unavailable";
-        }
+
+      // Update standard footer slot.
+      if (slots.footer && market.regularMarketTime) {
+        const marketDate = new Date(
+          market.regularMarketTime * 1000
+        );
+
+        slots.footer.textContent =
+          `Last trade: ${marketDate.toLocaleTimeString(safeLocale())}`;
+      }
+
+    } catch (error) {
+      if (error.name === "AbortError") return;
+
+      console.error(`Ticker ${symbol}:`, error);
+
+      priceEl.textContent = "Error";
+      changeEl.textContent = "Failed to fetch";
+
+      if (slots.subtitle) {
+        slots.subtitle.textContent = "Unavailable";
+      }
+
+      if (slots.footer) {
+        slots.footer.textContent = "";
       }
     }
   }
 
-  updateTicker();
-  const timerId = setInterval(updateTicker, cardData.refreshMs || 15000);
+  // Initial update.
+  update();
 
+  // Periodic refresh.
+  const refreshMs = Math.max(
+    meta.minRefreshMs,
+    Number(cardData.refreshMs) || 15000
+  );
+
+  const timer = setInterval(update, refreshMs);
+
+  // Cleanup: called when the card is edited,
+  // moved to another type, or removed.
   return () => {
-    clearInterval(timerId);
+    clearInterval(timer);
     controller.abort();
-    fit.destroy();
+    fit?.destroy();
   };
-}
-
-// Converts an array of numbers into a responsive SVG polyline
-function drawSparkline(svg, points, isUp) {
-  if (!points || points.length < 2) return;
-
-  const width = 200;
-  const height = 60;
-  const min = Math.min(...points);
-  const max = Math.max(...points);
-  const span = max - min || 1;
-
-  const coords = points
-    .map((val, i) => {
-      const x = (i / (points.length - 1)) * width;
-      const y = height - ((val - min) / span) * (height - 8) - 4; // 4px vertical padding
-      return `${isNaN(x) ? 0 : x.toFixed(1)},${isNaN(y) ? height / 2 : y.toFixed(1)}`;
-    })
-    .join(" ");
-
-  svg.innerHTML = `<polyline fill="none" stroke-width="2" points="${coords}" />`;
 }

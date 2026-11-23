@@ -1,25 +1,24 @@
+
 /*
-  Ticker layouts, chosen by the card's own size (not by its grid span), so it works at 1x1, 2x1, 1x2, 2x2 and beyond:
+  Ticker card presentation.
+  Chart drawing lives in utils/chartRenderer.js.
 
-    small      price + change
-    tall       + sparkline below   (card is at least 135px tall)
-    taller     + day range         (card is at least 215px tall)
-    wide/short sparkline beside the price (card is at least twice as wide as tall)
+  Design rules:
+  - Use shared WidgetBoard theme variables.
+  - The outer card is the size container named "card".
+  - Support 1x1, 2x1, 1x2, and 2x2 layouts.
+  - Use container queries instead of viewport dimensions.
+  - Never allow price text or chart content to overflow.
 */
-.ticker-symbol {
-  font-size: 0.75em;
-  color: var(--wb-text-faint);
-  font-weight: 400;
-}
 
-.ticker-widget {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 0.35em;
-  height: 100%;
-  min-width: 0;
-  min-height: 0;
+/* --------------------------------------------------
+   Header
+-------------------------------------------------- */
+
+.ticker-symbol {
+  color: var(--wb-text-faint);
+  font-size: 0.75em;
+  font-weight: 400;
 }
 
 .ticker-header {
@@ -31,19 +30,21 @@
 }
 
 .ticker-price {
-  font-size: 2.4em; /* fitText shrinks it when the number is too wide for the card */
+  color: var(--wb-text);
+  font-size: 2.4em;
   font-weight: 700;
   line-height: 1.1;
-  color: var(--wb-text);
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 .ticker-change {
-  font-size: 0.95em;
-  font-weight: 600;
   padding: 0.1em 0.45em;
   border-radius: 6px;
+  font-size: 0.95em;
+  font-weight: 600;
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
 .ticker-change.is-up {
@@ -56,52 +57,97 @@
   background: var(--wb-negative-bg);
 }
 
-.ticker-sparkline {
-  display: none;
+/* --------------------------------------------------
+   Main layout
+-------------------------------------------------- */
+
+.ticker-widget {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.35em;
+
   width: 100%;
-  flex: 1 1 0;
+  height: 100%;
+  min-width: 0;
   min-height: 0;
-  max-height: 60cqw; /* never taller than 60% of the card's width, so narrow tall cards don't get a steep spike */
 }
 
-.ticker-sparkline polyline {
-  stroke: var(--wb-positive);
-  vector-effect: non-scaling-stroke; /* keeps the line crisp however much the svg is stretched */
+/* --------------------------------------------------
+   Chart
+-------------------------------------------------- */
+
+.ticker-sparkline {
+  display: none;
+
+  width: 100%;
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 0;
+  max-height: 60cqw;
+
+  overflow: visible;
 }
-.is-down-trend .ticker-sparkline polyline {
-  stroke: var(--wb-negative);
-}
+
+/* --------------------------------------------------
+   Additional information
+-------------------------------------------------- */
 
 .ticker-range {
   display: none;
-  font-size: 0.85em;
-  color: var(--wb-text-muted);
-  white-space: nowrap;
+
   overflow: hidden;
+  color: var(--wb-text-muted);
+  font-size: 0.85em;
   text-overflow: ellipsis;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
 }
 
-@container card (min-height: 135px) {
-  .ticker-sparkline { display: block; }
+/* --------------------------------------------------
+   1x1 — Compact square
+   Prioritize the current price and daily change.
+-------------------------------------------------- */
+
+@container card (max-width: 150px) and (max-height: 150px) {
+  .ticker-widget {
+    justify-content: center;
+    gap: 0.2em;
+  }
+
+  .ticker-price {
+    font-size: 1.8em;
+  }
+
+  .ticker-change {
+    font-size: 0.8em;
+  }
+
+  .ticker-sparkline,
+  .ticker-range {
+    display: none;
+  }
 }
 
-@container card (min-height: 215px) {
-  .ticker-range { display: block; }
-}
+/* --------------------------------------------------
+   2x1 — Wide rectangle
+   Price on the left, chart on the right.
+-------------------------------------------------- */
 
-/* Wide and short: sparkline to the right of the price. */
-@container card (min-aspect-ratio: 2/1) and (min-width: 220px) {
+@container card (min-aspect-ratio: 2 / 1) and (min-width: 220px) {
   .ticker-widget {
     flex-direction: row;
     align-items: center;
     gap: 1em;
   }
+
   .ticker-header {
     flex: 0 1 auto;
     flex-direction: column;
     align-items: flex-start;
     max-width: 55%;
   }
+
   .ticker-sparkline {
     display: block;
     flex: 1 1 0;
@@ -109,5 +155,61 @@
     max-height: none;
     min-width: 0;
   }
-  .ticker-range { display: none; }
+
+  .ticker-range {
+    display: none;
+  }
 }
+
+/* --------------------------------------------------
+   1x2 — Tall rectangle
+   Quote above a larger chart.
+-------------------------------------------------- */
+
+@container card (max-aspect-ratio: 0.8 / 1) and (min-height: 190px) {
+  .ticker-widget {
+    justify-content: flex-start;
+  }
+
+  .ticker-sparkline {
+    display: block;
+    flex: 1 1 auto;
+    min-height: 90px;
+    max-height: none;
+  }
+}
+
+/* --------------------------------------------------
+   2x2 — Expanded square
+   Show the quote, chart, and daily range.
+-------------------------------------------------- */
+
+@container card
+  (min-width: 220px)
+  and (min-height: 220px)
+  and (min-aspect-ratio: 0.8 / 1)
+  and (max-aspect-ratio: 1.25 / 1) {
+
+  .ticker-sparkline {
+    display: block;
+    min-height: 90px;
+    max-height: none;
+  }
+
+  .ticker-range {
+    display: block;
+  }
+}
+
+/* --------------------------------------------------
+   Custom dimensions
+   Add additional container queries here.
+-------------------------------------------------- */
+
+/*
+@container card (min-width: 500px) and (min-height: 150px) {
+  .ticker-widget {
+    ...
+  }
+}
+*/

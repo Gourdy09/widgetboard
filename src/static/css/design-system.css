@@ -1,0 +1,105 @@
+/*
+ * WidgetBoard shared visual system
+ * Reference: ticker stock card.
+ *
+ * Load this once from dashboard.css. Card styles should consume these tokens
+ * instead of defining their own global colors, typography, or icon treatment.
+ */
+
+:root {
+  --wb-design-bg: #080808;
+  --wb-design-surface: #121212;
+  --wb-design-surface-raised: #1b1b1b;
+  --wb-design-text: #ffffff;
+  --wb-design-muted: #999999;
+  --wb-design-faint: #666666;
+  --wb-design-positive: #20d879;
+  --wb-design-negative: #ff5252;
+  --wb-design-radius: 30px;
+  --wb-design-padding: 24px;
+  --wb-design-icon-stroke: 1.8;
+  --wb-design-font: -apple-system, BlinkMacSystemFont, "SF Pro Display",
+    "Segoe UI", Roboto, system-ui, sans-serif;
+}
+
+/* Shared card surface. Theme variables remain authoritative when configured. */
+.grid-item {
+  color: var(--wb-text, var(--wb-design-text));
+  font-family: var(--wb-font, var(--wb-design-font));
+  background: var(--wb-surface, var(--wb-design-surface));
+  border: 0;
+  border-radius: var(--wb-radius, var(--wb-design-radius));
+  box-shadow: none;
+  padding: var(--wb-card-padding, var(--wb-design-padding));
+}
+
+/* Shared text roles */
+.wb-eyebrow {
+  color: var(--wb-text-faint, var(--wb-design-faint));
+  font-size: 0.78em;
+  font-weight: 500;
+  letter-spacing: 0.015em;
+  line-height: 1.2;
+}
+
+.wb-secondary {
+  color: var(--wb-text-muted, var(--wb-design-muted));
+}
+
+.wb-value {
+  color: var(--wb-text, var(--wb-design-text));
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  line-height: 1.05;
+  font-variant-numeric: tabular-nums;
+}
+
+.wb-positive { color: var(--wb-positive, var(--wb-design-positive)); }
+.wb-negative { color: var(--wb-negative, var(--wb-design-negative)); }
+
+/*
+ * Icon contract:
+ * - use one consistent outline family
+ * - 1.8px stroke, rounded caps/joins
+ * - currentColor controls state color
+ * - never stretch the SVG
+ */
+.wb-icon {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  color: currentColor;
+  line-height: 0;
+}
+
+.wb-icon svg {
+  display: block;
+  width: 1em;
+  height: 1em;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: var(--wb-design-icon-stroke);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.wb-icon--compact { font-size: 18px; }
+.wb-icon--standard { font-size: 24px; }
+.wb-icon--expanded { font-size: 28px; }
+.wb-icon--hero { font-size: 36px; }
+
+/* Generic semantic icon colors; use sparingly. */
+.wb-icon.is-positive { color: var(--wb-positive, var(--wb-design-positive)); }
+.wb-icon.is-negative { color: var(--wb-negative, var(--wb-design-negative)); }
+
+/* All card descendants should be allowed to shrink instead of forcing overflow. */
+.grid-item,
+.grid-item * {
+  min-width: 0;
+}
+
+.grid-item img,
+.grid-item svg {
+  max-width: 100%;
+}

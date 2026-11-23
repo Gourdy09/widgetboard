@@ -29,23 +29,72 @@ const BASE = {
 export const PRESETS = {
   dark: {
     label: "Dark",
-    colors: { background: "#0f172a", surface: "#1e293b", border: "#334155", text: "#f8fafc", textMuted: "#94a3b8", textFaint: "#64748b", accent: "#38bdf8", positive: "#22c55e", negative: "#ef4444" },
+    colors: {
+      background: "#080808",
+      surface: "#121212",
+      border: "#121212",
+      text: "#ffffff",
+      textMuted: "#999999",
+      textFaint: "#666666",
+      accent: "#ffffff",
+      positive: "#20d879",
+      negative: "#ff5252",
+    },
   },
   light: {
     label: "Light",
-    colors: { background: "#f1f5f9", surface: "#ffffff", border: "#e2e8f0", text: "#0f172a", textMuted: "#475569", textFaint: "#94a3b8", accent: "#0284c7", positive: "#16a34a", negative: "#dc2626" },
+    colors: {
+      background: "#f1f5f9",
+      surface: "#ffffff",
+      border: "#e2e8f0",
+      text: "#0f172a",
+      textMuted: "#475569",
+      textFaint: "#94a3b8",
+      accent: "#0284c7",
+      positive: "#16a34a",
+      negative: "#dc2626"
+    },
   },
   midnight: {
-    label: "Midnight (OLED)",
-    colors: { background: "#000000", surface: "#0b0f19", border: "#1f2937", text: "#e5e7eb", textMuted: "#9ca3af", textFaint: "#6b7280", accent: "#a78bfa", positive: "#34d399", negative: "#fb7185" },
+    label: "Midnight",
+    colors: { 
+      background: "#000000", 
+      surface: "#0b0f19", 
+      border: "#1f2937", 
+      text: "#e5e7eb", 
+      textMuted: "#9ca3af", 
+      textFaint: "#6b7280", 
+      accent: "#a78bfa", 
+      positive: "#34d399", 
+      negative: "#fb7185" 
+    },
   },
   solarized: {
     label: "Solarized Dark",
-    colors: { background: "#002b36", surface: "#073642", border: "#586e75", text: "#eee8d5", textMuted: "#93a1a1", textFaint: "#657b83", accent: "#268bd2", positive: "#859900", negative: "#dc322f" },
+    colors: { 
+      background: "#002b36", 
+      surface: "#073642", 
+      border: "#586e75", 
+      text: "#eee8d5", 
+      textMuted: "#93a1a1", 
+      textFaint: "#657b83", 
+      accent: "#268bd2", 
+      positive: "#859900", 
+      negative: "#dc322f" 
+    },
   },
   "high-contrast": {
     label: "High contrast",
-    colors: { background: "#000000", surface: "#000000", border: "#ffffff", text: "#ffffff", textMuted: "#e5e5e5", textFaint: "#bdbdbd", accent: "#ffff00", positive: "#00ff6a", negative: "#ff4d4d" },
+    colors: { background: "#000000", 
+      surface: "#000000", 
+      border: "#ffffff", 
+      text: "#ffffff", 
+      textMuted: "#e5e5e5", 
+      textFaint: "#bdbdbd", 
+      accent: "#ffff00", 
+      positive: "#00ff6a", 
+      negative: "#ff4d4d" 
+    },
     spacing: { borderWidth: 2 },
     effects: { shadow: false },
   },
@@ -90,11 +139,11 @@ export function normalizeTheme(raw) {
 
   const s = src.spacing ?? {};
   const spacing = {
-    gap: clamp(Math.round(num(s.gap, base.spacing.gap)), 0, 48),
-    padding: clamp(Math.round(num(s.padding, base.spacing.padding)), 0, 96),
-    cardPadding: clamp(Math.round(num(s.cardPadding, base.spacing.cardPadding)), 0, 48),
-    radius: clamp(Math.round(num(s.radius, base.spacing.radius)), 0, 48),
-    borderWidth: clamp(Math.round(num(s.borderWidth, base.spacing.borderWidth)), 0, 8),
+    gap: clamp(Math.round(num(s.gap, base.spacing.gap)), 0, 16),
+    padding: clamp(Math.round(num(s.padding, base.spacing.padding)), 0, 24),
+    cardPadding: clamp(Math.round(num(s.cardPadding, base.spacing.cardPadding)), 0, 24),
+    radius: clamp(Math.round(num(s.radius, base.spacing.radius)), 0, 30),
+    borderWidth: clamp(Math.round(num(s.borderWidth, base.spacing.borderWidth)), 0, 0),
   };
 
   const t = src.typography ?? {};
