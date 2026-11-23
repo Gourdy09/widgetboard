@@ -1,6 +1,6 @@
-import { LayoutStore } from "./core/layoutStore.js";
+import { LayoutStore } from "../core/layoutStore.js";
 import { Dashboard } from "./core/dashboard.js";
-import { startSync } from "./core/layoutSync.js";
+import { startSync } from "../core/layoutSync.js";
 import { loadCardStyles } from "./cards/index.js";
 
 async function main() {

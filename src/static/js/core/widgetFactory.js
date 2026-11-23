@@ -1,5 +1,5 @@
 import { getCardRenderer } from "../cards/index.js";
-import { SECTIONS } from "../core/layoutEngine.js";
+import { SECTIONS } from "./layoutEngine.js";
 
 const TAGS = { title: "h2", subtitle: "h3", main: "div", footer: "p" };
 

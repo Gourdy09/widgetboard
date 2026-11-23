@@ -1,5 +1,5 @@
 import { createCard, applyPlacement, contentKey } from "../utils/cardFactory.js";
-import { applyTheme } from "./theme.js";
+import { applyTheme } from "../core/theme.js";
 
 // Renders a LayoutStore into the page. Untouched cards keep their DOM and timers; moved/resized
 // cards only get new CSS variables; edited cards are rebuilt; removed cards are destroyed.
