@@ -58,6 +58,7 @@ func main() {
 	http.HandleFunc("/api/logout", a.logoutHandler)
 	http.HandleFunc("/api/session", a.sessionHandler)
 
+	http.HandleFunc("/api/modules/registry", a.require(moduleRegistryHandler))
 	http.HandleFunc("/api/layout", layout.handler(a))
 	http.HandleFunc("/api/stock", stockHandler)
 	http.HandleFunc("/api/symbols", a.require(symbolsHandler))

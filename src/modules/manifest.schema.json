@@ -1,0 +1,33 @@
+{
+  "id": "community.weather",
+  "name": "Weather",
+  "version": "1.0.0",
+  "description": "Current weather and forecasts",
+  "author": "community-dev",
+  "entry": "card.js",
+  "styles": "card.css",
+  "size": {
+    "default": [2, 2],
+    "min": [1, 1],
+    "max": [4, 4]
+  },
+  "settings": {
+    "location": {
+      "type": "text",
+      "label": "Location",
+      "default": "Pittsburgh",
+      "required": true
+    },
+    "apiKey": {
+      "type": "secret",
+      "label": "API Key",
+      "required": true
+    },
+    "units": {
+      "type": "select",
+      "label": "Units",
+      "options": ["imperial", "metric"],
+      "default": "imperial"
+    }
+  }
+}
