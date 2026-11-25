@@ -60,8 +60,6 @@ func main() {
 
 	http.HandleFunc("/api/modules/registry", a.require(moduleRegistryHandler))
 	http.HandleFunc("/api/layout", layout.handler(a))
-	http.HandleFunc("/api/stock", stockHandler)
-	http.HandleFunc("/api/symbols", a.require(symbolsHandler))
 
 	fmt.Printf("Listening on %s (layout stored in %s)\n", *addr, *dataDir)
 	if err := http.ListenAndServe(*addr, nil); err != nil {
