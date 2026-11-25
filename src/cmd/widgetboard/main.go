@@ -7,6 +7,9 @@ import (
 	"net/http"
 	"os"
 
+	"widgetboard/cmd/widgetboard/auth"
+	"widgetboard/cmd/widgetboard/dashboard"
+	"widgetboard/cmd/widgetboard/widgets"
 	"widgetboard/static"
 	"widgetboard/web"
 )
@@ -47,19 +50,19 @@ func main() {
 		}
 	}
 
-	a := newAuth(*adminUser, *adminPass)
-	layout := newLayoutStore(*dataDir)
+	a := auth.New(*adminUser, *adminPass)
+	layout := dashboard.NewStore(*dataDir)
 
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(static.Files))))
 	http.HandleFunc("/", render("dashboard.html"))
 	http.HandleFunc("/admin", render("admin.html"))
 
-	http.HandleFunc("/api/login", a.loginHandler)
-	http.HandleFunc("/api/logout", a.logoutHandler)
-	http.HandleFunc("/api/session", a.sessionHandler)
+	http.HandleFunc("/api/login", a.LoginHandler)
+	http.HandleFunc("/api/logout", a.LogoutHandler)
+	http.HandleFunc("/api/session", a.SessionHandler)
 
-	http.HandleFunc("/api/modules/registry", a.require(moduleRegistryHandler))
-	http.HandleFunc("/api/layout", layout.handler(a))
+	http.HandleFunc("/api/modules/registry", a.Require(widgets.RegistryHandler))
+	http.HandleFunc("/api/layout", layout.Handler(a))
 
 	fmt.Printf("Listening on %s (layout stored in %s)\n", *addr, *dataDir)
 	if err := http.ListenAndServe(*addr, nil); err != nil {

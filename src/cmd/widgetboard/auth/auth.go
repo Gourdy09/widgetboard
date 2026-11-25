@@ -1,4 +1,4 @@
-package main
+package auth
 
 import (
 	"crypto/rand"
@@ -16,10 +16,10 @@ const (
 	sessionTTL    = 12 * time.Hour
 )
 
-// auth is a deliberately small placeholder: one username/password, in-memory sessions.
+// Auth is a deliberately small placeholder: one username/password, in-memory sessions.
 // It keeps the admin panel behind a login for now; real security (mTLS, hashed credentials,
 // rate limiting) comes later, as described in the README.
-type auth struct {
+type Auth struct {
 	userHash [32]byte
 	passHash [32]byte
 	user     string
@@ -28,8 +28,8 @@ type auth struct {
 	sessions map[string]time.Time
 }
 
-func newAuth(user, pass string) *auth {
-	return &auth{
+func New(user, pass string) *Auth {
+	return &Auth{
 		user:     user,
 		userHash: sha256.Sum256([]byte(user)),
 		passHash: sha256.Sum256([]byte(pass)),
@@ -37,7 +37,7 @@ func newAuth(user, pass string) *auth {
 	}
 }
 
-func (a *auth) check(user, pass string) bool {
+func (a *Auth) check(user, pass string) bool {
 	u := sha256.Sum256([]byte(user))
 	p := sha256.Sum256([]byte(pass))
 	// Hash first so the comparison is constant-time regardless of input length.
@@ -46,7 +46,7 @@ func (a *auth) check(user, pass string) bool {
 	return okUser&okPass == 1
 }
 
-func (a *auth) newSession() string {
+func (a *Auth) newSession() string {
 	b := make([]byte, 32)
 	if _, err := rand.Read(b); err != nil {
 		panic(err)
@@ -64,7 +64,7 @@ func (a *auth) newSession() string {
 	return token
 }
 
-func (a *auth) valid(r *http.Request) bool {
+func (a *Auth) Valid(r *http.Request) bool {
 	c, err := r.Cookie(sessionCookie)
 	if err != nil {
 		return false
@@ -80,9 +80,9 @@ func (a *auth) valid(r *http.Request) bool {
 }
 
 // require wraps a handler so it only runs for a signed-in admin.
-func (a *auth) require(next http.HandlerFunc) http.HandlerFunc {
+func (a *Auth) Require(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if !a.valid(r) {
+		if !a.Valid(r) {
 			http.Error(w, "sign in required", http.StatusUnauthorized)
 			return
 		}
@@ -90,7 +90,7 @@ func (a *auth) require(next http.HandlerFunc) http.HandlerFunc {
 	}
 }
 
-func (a *auth) loginHandler(w http.ResponseWriter, r *http.Request) {
+func (a *Auth) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -120,7 +120,7 @@ func (a *auth) loginHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (a *auth) logoutHandler(w http.ResponseWriter, r *http.Request) {
+func (a *Auth) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	if c, err := r.Cookie(sessionCookie); err == nil {
 		a.mu.Lock()
 		delete(a.sessions, c.Value)
@@ -130,10 +130,10 @@ func (a *auth) logoutHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-func (a *auth) sessionHandler(w http.ResponseWriter, r *http.Request) {
+func (a *Auth) SessionHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "no-store")
-	if a.valid(r) {
+	if a.Valid(r) {
 		json.NewEncoder(w).Encode(map[string]any{"authenticated": true, "user": a.user})
 		return
 	}

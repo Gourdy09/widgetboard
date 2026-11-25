@@ -1,5 +1,4 @@
-
-package main
+package widgets
 
 import (
 	"encoding/json"
@@ -10,7 +9,8 @@ import (
 
 const registryURL = "https://raw.githubusercontent.com/Gourdy09/widgetboard-widgets/main/registry.json"
 
-func moduleRegistryHandler(w http.ResponseWriter, r *http.Request) {
+// RegistryHandler proxies the community registry (admin only; see main.go).
+func RegistryHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 		return

@@ -1,4 +1,4 @@
-package main
+package dashboard
 
 import (
 	"crypto/sha256"
@@ -10,20 +10,21 @@ import (
 	"os"
 	"path/filepath"
 
+	"widgetboard/cmd/widgetboard/auth"
 	"widgetboard/static"
 )
 
-// layoutStore keeps the dashboard layout on disk (the embedded default is read-only).
+// Store keeps the dashboard layout on disk (the embedded default is read-only).
 // If no saved layout exists yet, the embedded json/dashboard.json is served instead.
-type layoutStore struct {
+type Store struct {
 	path string
 }
 
-func newLayoutStore(dataDir string) *layoutStore {
-	return &layoutStore{path: filepath.Join(dataDir, "dashboard.json")}
+func NewStore(dataDir string) *Store {
+	return &Store{path: filepath.Join(dataDir, "dashboard.json")}
 }
 
-func (s *layoutStore) read() ([]byte, error) {
+func (s *Store) read() ([]byte, error) {
 	data, err := os.ReadFile(s.path)
 	if os.IsNotExist(err) {
 		return fs.ReadFile(static.Files, "json/dashboard.json")
@@ -32,7 +33,7 @@ func (s *layoutStore) read() ([]byte, error) {
 }
 
 // write saves atomically: a crash or power loss mid-write can never leave a half-written layout.
-func (s *layoutStore) write(data []byte) error {
+func (s *Store) write(data []byte) error {
 	if err := os.MkdirAll(filepath.Dir(s.path), 0o755); err != nil {
 		return err
 	}
@@ -56,17 +57,17 @@ func (s *layoutStore) write(data []byte) error {
 	return os.Rename(tmp.Name(), s.path)
 }
 
-// handler serves GET and PUT /api/layout (PUT requires a signed-in admin, see main.go).
+// Handler serves GET and PUT /api/layout (PUT requires a signed-in admin, see main.go).
 // The server only checks that the document is well-formed JSON with a "cards" array.
 // Sizes, overlaps, themes and card types are repaired by the layout engine in the browser
 // every time the layout loads, so a bad file can never break the wall display.
-func (s *layoutStore) handler(a *auth) http.HandlerFunc {
+func (s *Store) Handler(a *auth.Auth) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
 			s.get(w, r)
 		case http.MethodPut:
-			if !a.valid(r) {
+			if !a.Valid(r) {
 				http.Error(w, "sign in required", http.StatusUnauthorized)
 				return
 			}
@@ -78,7 +79,7 @@ func (s *layoutStore) handler(a *auth) http.HandlerFunc {
 	}
 }
 
-func (s *layoutStore) get(w http.ResponseWriter, r *http.Request) {
+func (s *Store) get(w http.ResponseWriter, r *http.Request) {
 	data, err := s.read()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -96,7 +97,7 @@ func (s *layoutStore) get(w http.ResponseWriter, r *http.Request) {
 	w.Write(data)
 }
 
-func (s *layoutStore) put(w http.ResponseWriter, r *http.Request) {
+func (s *Store) put(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 1<<20))
 	if err != nil {
 		http.Error(w, "body too large or unreadable", http.StatusRequestEntityTooLarge)
